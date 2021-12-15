@@ -5,3 +5,130 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 
+## Planning
+
+Get list of winners and details about them from Wikipedia.
+
+
+```{r}
+library(tidyverse)
+<- library(rvest)
+```
+
+### Starting on scraper
+
+```{r}
+url <- "https://en.wikipedia.org/wiki/Time_Person_of_the_Year"
+
+html <- read_html(url)
+
+table <- html %>% 
+  html_table()
+
+table <- table[[2]]
+```
+
+### Get table
+
+```{r}
+df <- table %>% 
+  janitor::clean_names() %>% 
+  separate(lifetime, c("birth", "death"), sep = "–", remove = F) %>% 
+  mutate(across(c(birth, death), parse_number)) %>% 
+  mutate(birth = if_else(str_detect(lifetime, "born"), true = parse_number(lifetime), false = birth),
+         choice = str_remove(choice, "\\(.*|\\[.*"),
+         choice = str_squish(choice),
+         url = str_c("https://en.wikipedia.org/wiki/", URLencode(choice)))
+```
+
+### Get article text
+
+Function to get text
+
+```{r}
+get_article_text <- function(url){
+  
+  message(str_c("Getting text from", url))
+  
+  html <- read_html(url)
+  
+  text <- html %>% 
+    html_nodes("p") %>% 
+    html_text() %>% 
+    as_tibble() %>% 
+    filter(nchar(value) > 10)
+  
+  text <- text %>% 
+    mutate(value = str_squish(value))
+  
+  text %>% 
+    rename(text = value)
+  
+}
+
+```
+
+### Use function
+
+```{r}
+df_text <- df %>% 
+  # head(3) %>%
+  mutate(text_nested = map(url, possibly(get_article_text, otherwise = "failed")))
+
+# df_text %>% write_rds(here::here("data", "article_text.rds"), compress = "gz")
+```
+
+
+## Now looking into tweetr
+
+```{r}
+library(rtweet)
+```
+
+### Function for tweetr
+
+```{r}
+get_tpoty_tweets <- function(query) {
+  
+  message(str_c("Getting tweets about ", query))
+  
+  query_cond <- str_c(query, " AND lang:en")
+
+  tweets <- search_tweets(query_cond, n = 10000, include_rts = FALSE)
+
+  tweets <- tweets %>%
+    # filter(favorite_count > 0) %>% 
+    select(text, favorite_count, retweet_count)
+  
+  tweets
+}
+
+# test <- get_tpoty_tweets("Harry Truman")
+# 
+# test %>% 
+#   reactable::reactable()
+
+df_tweets <- df %>% 
+  mutate(query = str_remove(choice, "[A-Z]\\. ")) %>% 
+  head(5) %>%
+  mutate(tweets_nested = map(query, possibly(get_tpoty_tweets, otherwise = "failed")))
+
+test %>% 
+  unnest(tweets_nested) %>% view
+
+test %>% 
+  unnest(tweets_nested) %>% 
+  ggplot(aes(favorite_count, retweet_count)) +
+  geom_jitter() +
+  geom_smooth(method = "lm") +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+Processing
+
+```{r}
+test %>% 
+  mutate(text = str_remove_all(text, "https.*|@.*")) %>% reactable::reactable()
+```
+

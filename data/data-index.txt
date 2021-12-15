@@ -1,2 +1,3 @@
 # Data Index
 
+article_text.rds is the nested df with the text of all the articles.
