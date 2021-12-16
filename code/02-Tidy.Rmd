@@ -9,6 +9,10 @@ output: html_document
 library(tidyverse)
 ```
 
+## Purpose
+
+Tidy up the wikipedia articles
+
 ```{r}
 df <- read_rds(here::here("data/article_text.rds"))
 ```
@@ -22,7 +26,8 @@ df <- df %>%
 df <- df %>% 
   unnest(text_nested) %>% 
   select(choice, text) %>% 
-  mutate(text = str_remove_all(text, "https.*|@.*"))
+  mutate(text = str_remove_all(text, "https.*|@.*"),
+         text = str_remove_all(text, "\\[[0-9].*\\]"))
 ```
 
 ```{r}
