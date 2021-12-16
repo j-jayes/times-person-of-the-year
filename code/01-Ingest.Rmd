@@ -12,7 +12,7 @@ Get list of winners and details about them from Wikipedia.
 
 ```{r}
 library(tidyverse)
-<- library(rvest)
+library(rvest)
 ```
 
 ### Starting on scraper
@@ -97,23 +97,24 @@ get_tpoty_tweets <- function(query) {
   tweets <- search_tweets(query_cond, n = 10000, include_rts = FALSE)
 
   tweets <- tweets %>%
+    # do it twice with fav count limited
     # filter(favorite_count > 0) %>% 
     select(text, favorite_count, retweet_count)
   
   tweets
+  
 }
 
-# test <- get_tpoty_tweets("Harry Truman")
-# 
-# test %>% 
-#   reactable::reactable()
-
 df_tweets <- df %>% 
+  distinct(choice) %>% 
   mutate(query = str_remove(choice, "[A-Z]\\. ")) %>% 
-  head(5) %>%
-  mutate(tweets_nested = map(query, possibly(get_tpoty_tweets, otherwise = "failed")))
+  # head(3) %>%
+  mutate(tweets_nested = purrr::map(query, possibly(get_tpoty_tweets, otherwise = "failed")))
+```
 
-test %>% 
+
+```{r}
+df_tweets %>% 
   unnest(tweets_nested) %>% view
 
 test %>% 

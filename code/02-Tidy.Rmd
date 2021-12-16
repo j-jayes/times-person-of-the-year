@@ -9,3 +9,24 @@ output: html_document
 library(tidyverse)
 ```
 
+```{r}
+df <- read_rds(here::here("data/article_text.rds"))
+```
+
+```{r}
+df <- df %>% 
+  filter(text_nested != "failed")
+```
+
+```{r}
+df <- df %>% 
+  unnest(text_nested) %>% 
+  select(choice, text) %>% 
+  mutate(text = str_remove_all(text, "https.*|@.*"))
+```
+
+```{r}
+df %>% write_rds(here::here("data", "wiki_text_to_score.rds"))
+df %>% write_csv(here::here("data", "wiki_text_to_score.csv"))
+```
+
